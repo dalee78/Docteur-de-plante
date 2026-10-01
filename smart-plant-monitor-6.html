@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Médecin des plantes</title>
+<style>
+:root{
+  --bg:#0c1220; --panel:#141c2c; --panel2:#1a2438; --line:#26324a;
+  --text:#eef2f8; --sub:#93a1bb; --green:#22c55e; --blue:#3b82f6; --accent:#5eead4;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="light"]){ --bg:#0c1220; --panel:#141c2c; } }
+:root[data-theme="dark"]{ --bg:#0c1220; --panel:#141c2c; }
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{ margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; min-height:100%; }
+header{ display:flex; align-items:center; gap:14px; padding:18px 20px; background:linear-gradient(120deg,#0e3a24,#0c1220 70%); border-bottom:1px solid var(--line); padding-top:calc(18px + env(safe-area-inset-top,0px)); }
+.logo{ width:44px;height:44px;border-radius:50%;background:var(--green); display:flex;align-items:center;justify-content:center;font-size:22px;flex:none; }
+header h1{margin:0;font-size:1.25rem} header p{margin:2px 0 0;color:var(--sub);font-size:.85rem}
+.layout{ display:grid; grid-template-columns:1fr 340px; gap:16px; padding:16px; max-width:1200px; margin:0 auto; }
+@media (max-width:820px){ .layout{grid-template-columns:1fr} }
+.stage-wrap{ background:radial-gradient(ellipse at 50% 20%, #16233a, var(--panel) 70%); border:1px solid var(--line); border-radius:16px; padding:0; position:relative; overflow:hidden; height:540px; }
+@media (max-width:600px){ .stage-wrap{height:400px} }
+.stage{ width:100%; height:100%; cursor:grab; touch-action:none; }
+.stage:active{ cursor:grabbing; }
+.stage canvas{ display:block; width:100%; height:100%; }
+.hint{ position:absolute; left:14px; top:14px; font-size:.7rem; color:var(--sub); background:rgba(15,22,36,.7); padding:5px 9px; border-radius:6px; pointer-events:none; z-index:2; }
+.zoom-controls{ position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; gap:6px; z-index:2; }
+.zoom-controls button{ width:34px;height:34px;border-radius:8px;background:var(--panel2); border:1px solid var(--line);color:var(--text);font-size:1.1rem;cursor:pointer; }
+.zoom-controls button:hover{ border-color:var(--blue); }
+.focus-card{ position:absolute; top:14px; right:14px; max-width:230px; z-index:3; background:rgba(13,20,33,.96); border:1px solid var(--accent); border-radius:12px; padding:14px 16px 14px 14px; box-shadow:0 10px 28px rgba(0,0,0,.45); }
+.focus-card[hidden]{ display:none; }
+.focus-card h3{ margin:0 0 6px; font-size:.9rem; color:var(--green); padding-right:14px; }
+.focus-card p{ margin:0; font-size:.82rem; line-height:1.5; color:var(--sub); }
+.focus-card .close{ position:absolute; top:6px; right:8px; background:none; border:none; color:var(--sub); cursor:pointer; font-size:1.05rem; line-height:1; }
+.panel{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px; max-height:540px; overflow-y:auto; }
+.panel h2{ margin:2px 6px 10px; font-size:1rem; }
+.item{ border-bottom:1px solid var(--line); }
+.item:last-child{border-bottom:none}
+.item button{ width:100%; display:flex; gap:10px; align-items:center; text-align:left; background:none; border:none; color:var(--text); padding:10px 6px; cursor:pointer; font-size:.92rem; font-family:inherit; }
+.item button .num{ width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff; font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none; }
+.item.active button .num{ background:var(--green); }
+.item .desc{ max-height:0; overflow:hidden; color:var(--sub); font-size:.85rem; line-height:1.45; padding:0 6px; transition:max-height .3s ease, padding .3s ease; }
+.item.active .desc{ max-height:140px; padding:0 6px 12px 38px; }
+.toolbar{ display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; max-width:1200px; margin:0 auto; padding:0 16px 20px; padding-bottom:calc(20px + env(safe-area-inset-bottom,0px)); }
+.tabs{ display:flex; gap:8px; flex-wrap:wrap; background:var(--panel); padding:6px; border-radius:12px; border:1px solid var(--line); }
+.tabs button{ background:none; border:1px solid transparent; color:var(--sub); padding:8px 14px; border-radius:8px; font-size:.85rem; cursor:pointer; font-family:inherit; }
+.tabs button.active{ background:var(--panel2); color:var(--text); border-color:var(--blue); }
+.controls{ display:flex; gap:14px; align-items:center; background:var(--panel); padding:8px 14px; border-radius:12px; border:1px solid var(--line); }
+.switch{ position:relative; width:38px;height:22px;background:var(--line);border-radius:11px;cursor:pointer;border:none; }
+.switch::after{ content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s; }
+.switch.on{ background:var(--green); }
+.switch.on::after{ transform:translateX(16px); }
+.controls span{ font-size:.8rem; color:var(--sub); }
+.controls button.plain{ background:none;border:none;color:var(--sub);cursor:pointer;font-size:.8rem;display:flex;gap:6px;align-items:center; font-family:inherit;}
+
+.sim-btn{ background:var(--green); color:#04210f; border:none; border-radius:12px; padding:11px 20px; font-weight:700; font-size:.9rem; cursor:pointer; font-family:inherit; box-shadow:0 4px 16px rgba(34,197,94,.3); }
+.sim-btn:hover:not(:disabled){ filter:brightness(1.08); }
+.sim-btn:disabled{ opacity:.55; cursor:default; box-shadow:none; }
+.sim-banner{ position:absolute; left:14px; bottom:14px; right:64px; max-width:380px; z-index:2; background:rgba(13,20,33,.94); border:1px solid var(--accent); border-radius:12px; padding:10px 14px 12px; box-shadow:0 10px 28px rgba(0,0,0,.45); }
+.sim-banner[hidden]{ display:none; }
+.sim-step{ font-size:.7rem; color:var(--accent); font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-bottom:4px; }
+.sim-text{ font-size:.84rem; line-height:1.45; color:var(--text); min-height:2.4em; }
+.sim-track{ height:4px; background:var(--line); border-radius:2px; margin-top:8px; overflow:hidden; }
+.sim-bar{ height:100%; width:0; background:var(--green); transition:width .5s ease; }
+
+.phone{ position:absolute; right:14px; top:14px; width:184px; z-index:4; background:#05080f; border:3px solid #2b3956; border-radius:26px; padding:8px 8px 12px; box-shadow:0 14px 36px rgba(0,0,0,.6); }
+.phone[hidden]{ display:none; }
+.phone.buzz{ animation:buzz .5s 2; }
+@keyframes buzz{ 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px) rotate(-1.5deg)} 40%{transform:translateX(5px) rotate(1.5deg)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+.phone-bar{ display:flex; justify-content:space-between; font-size:.62rem; color:var(--sub); padding:2px 10px 8px; }
+.phone-screen{ background:linear-gradient(160deg,#16233a,#0c1220); border-radius:16px; padding:10px; min-height:170px; }
+.notif{ background:rgba(240,244,250,.96); color:#0c1220; border-radius:12px; padding:9px 10px; cursor:pointer; transform:translateY(-18px); opacity:0; transition:transform .4s ease, opacity .4s ease; }
+.notif.in{ transform:none; opacity:1; }
+.notif[hidden], .app[hidden]{ display:none; }
+.notif-head{ display:flex; justify-content:space-between; font-size:.62rem; color:#5a6780; margin-bottom:4px; }
+.notif b{ font-size:.8rem; display:block; margin-bottom:2px; }
+.notif p{ margin:0; font-size:.7rem; line-height:1.35; color:#33405a; }
+.app-title{ font-size:.8rem; font-weight:700; color:var(--green); margin-bottom:10px; }
+.app-label{ font-size:.68rem; color:var(--sub); margin-bottom:5px; }
+.lvl{ height:10px; background:var(--line); border-radius:5px; overflow:hidden; }
+.lvl-bar{ height:100%; width:0; background:var(--blue); }
+.lvl-txt{ font-size:.75rem; margin:5px 0 12px; }
+.app-btn{ width:100%; background:var(--green); color:#04210f; border:none; border-radius:8px; padding:8px; font-weight:700; font-size:.72rem; cursor:pointer; font-family:inherit; }
+.app-btn:disabled{ opacity:.7; cursor:default; }
+
+.sim-next{ width:100%; margin-top:10px; background:var(--accent); color:#04201c; border:none; border-radius:9px; padding:9px; font-weight:700; font-size:.82rem; cursor:pointer; font-family:inherit; }
+.sim-next:disabled{ opacity:.4; cursor:default; }
+
+.intro{ position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center;
+  background:radial-gradient(circle at 50% 30%, #16233a 0%, var(--bg) 70%); transition:opacity .6s ease, visibility .6s ease; }
+.intro.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+.intro-card{ max-width:560px; animation:introIn .8s ease both; }
+@keyframes introIn{ from{ opacity:0; transform:translateY(18px); } to{ opacity:1; transform:none; } }
+.intro-logo{ width:76px; height:76px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:38px; margin:0 auto 20px; box-shadow:0 0 40px rgba(34,197,94,.35); }
+.intro h1{ margin:0 0 6px; font-size:2.2rem; }
+.intro .tag{ color:var(--accent); font-size:1rem; margin:0 0 26px; }
+.intro p.txt{ color:var(--text); font-size:1.05rem; line-height:1.65; margin:0 0 14px; }
+.intro p.txt.sub{ color:var(--sub); margin-bottom:30px; }
+.intro-btn{ background:var(--green); color:#04210f; border:none; border-radius:14px; padding:14px 30px; font-weight:700; font-size:1rem; cursor:pointer; font-family:inherit; box-shadow:0 6px 22px rgba(34,197,94,.35); }
+.intro-btn:hover{ filter:brightness(1.08); }
+</style>
+</head>
+<body>
+<div class="intro" id="intro">
+  <div class="intro-card">
+    <div class="intro-logo">🌱</div>
+    <h1>Médecin des plantes</h1>
+    <p class="tag">Un appareil intelligent qui prend soin de vos plantes</p>
+    <p class="txt">C'est un appareil intelligent conçu pour préserver la santé des plantes potagères. Il est constitué d'un capteur inséré dans le pot, capable de détecter l'état du sol et de la plante, ainsi que d'une IA qui analyse ces données afin de déterminer précisément les doses ou quantités de minéraux manquants.</p>
+    <p class="txt">☀️ Il est alimenté par l'énergie solaire.</p>
+    <p class="txt sub">Découvrons d'abord le modèle 3D, puis lançons une simulation.</p>
+    <button class="intro-btn" id="introBtn">Découvrir le modèle 3D ▶</button>
+  </div>
+</div>
+<header>
+  <div class="logo">🌱</div>
+  <div>
+    <h1>Médecin des plantes</h1>
+    <p>Modèle 3D interactif — cliquez sur une pièce pour l'examiner</p>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="stage-wrap">
+    <div class="hint">Glisser pour tourner · molette / pincer pour zoomer · cliquer une pièce pour l'examiner</div>
+    <div class="stage" id="stage"></div>
+    <div class="zoom-controls">
+      <button id="zoomIn" title="Zoomer">+</button>
+      <button id="zoomOut" title="Dézoomer">−</button>
+      <button id="zoomReset" title="Réinitialiser la vue">⤾</button>
+    </div>
+    <div class="focus-card" id="focusCard" hidden>
+      <button class="close" id="focusClose" title="Fermer">×</button>
+      <h3 id="focusTitle"></h3>
+      <p id="focusDesc"></p>
+    </div>
+    <div class="phone" id="phone" hidden>
+      <div class="phone-bar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="phone-screen">
+        <div class="notif" id="notif">
+          <div class="notif-head"><span>🌱 Médecin des plantes</span><span>maintenant</span></div>
+          <b>Cartouche vide</b>
+          <p>Le réservoir de nutriments est vide. Appuyez pour le remplir.</p>
+        </div>
+        <div class="app" id="phoneApp" hidden>
+          <div class="app-title">Médecin des plantes</div>
+          <div class="app-label">Cartouche nutritive</div>
+          <div class="lvl"><div class="lvl-bar" id="lvlBar"></div></div>
+          <div class="lvl-txt" id="lvlTxt">0 %</div>
+          <button class="app-btn" id="refillBtn">J'ai rempli la cartouche</button>
+        </div>
+      </div>
+    </div>
+    <div class="sim-banner" id="simBanner" hidden aria-live="polite">
+      <div class="sim-step" id="simStep"></div>
+      <div class="sim-text" id="simText"></div>
+      <div class="sim-track"><div class="sim-bar" id="simBar"></div></div>
+      <button class="sim-next" id="simNext" disabled>Suivant ▶</button>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Détails des composants</h2>
+    <div id="list"></div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="tabs" id="tabs">
+    <button data-view="general" class="active">Vue générale</button>
+    <button data-view="exploded">Vue éclatée</button>
+    <button data-view="internal">Modules internes</button>
+    <button data-view="plant">Plante &amp; réservoir</button>
+  </div>
+  <button class="sim-btn" id="simBtn">▶ Lancer la simulation</button>
+  <div class="controls">
+    <span>Rotation auto</span>
+    <button class="switch" id="spinToggle"></button>
+    <button class="plain" id="fsBtn">⛶ Plein écran</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const COMPONENTS = [
+  {id:1, name:"Caméra", desc:"Photographie régulièrement le feuillage. L'IA repère jaunissement, taches ou flétrissement avant qu'ils ne soient visibles à l'œil nu."},
+  {id:2, name:"Écran de contrôle", desc:"Affiche en direct l'état de la plante et les mesures du sol (N, P, K, pH). Un tap lance l'analyse IA."},
+  {id:3, name:"Cartouche + tube doseur", desc:"Contient la solution minérale. Le tube en verse dans le substrat la dose exacte calculée par l'IA, sans gaspillage."},
+  {id:4, name:"Câbles et connexions", desc:"Relient capteurs, caméra et unité centrale pour transmettre les mesures en continu à l'IA et à l'écran."},
+  {id:5, name:"Feuilles (zone analysée)", desc:"Zone suivie par la caméra. Leur couleur et leur tenue révèlent une carence en minéraux."},
+  {id:6, name:"Capteurs dans le sol", desc:"Insérés dans le pot, ils mesurent l'azote (N), le phosphore (P), le potassium (K), le pH et l'humidité du sol."},
+  {id:7, name:"Pot et substrat", desc:"Le pot de la plante potagère : il accueille les capteurs et sert de support à l'ensemble du système."},
+  {id:8, name:"Indicateur de santé globale", desc:"Résume l'état de la plante en un mot (« Bonne », « À surveiller », « Carence ») pour un coup d'œil rapide."},
+  {id:9, name:"Module d'IA", desc:"Cerveau de l'appareil : il analyse les données du sol et de la plante, puis calcule les minéraux manquants à apporter."},
+  {id:10, name:"Panneau solaire", desc:"Alimente l'appareil grâce à l'énergie solaire : fonctionnement autonome, sans prise ni piles à changer."},
+];
+
+const list = document.getElementById('list');
+list.innerHTML = COMPONENTS.map(c => `
+  <div class="item" id="item-${c.id}">
+    <button onclick="focusOn(${c.id})"><span class="num">${c.id}</span>${c.name}</button>
+    <div class="desc">${c.desc}</div>
+  </div>`).join('');
+
+function activate(id){
+  document.querySelectorAll('.item').forEach(el => el.classList.toggle('active', el.id === 'item-'+id));
+  const item = document.getElementById('item-'+id);
+  if(item) item.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+/* generic tween */
+function tween(state, target, duration, onUpdate, onDone){
+  const start = Object.assign({}, state); const t0 = performance.now();
+  function step(now){
+    const t = Math.min(1, (now - t0) / duration);
+    const e = t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2;
+    for(const k in target){ state[k] = start[k] + (target[k] - start[k]) * e; }
+    onUpdate && onUpdate();
+    if(t < 1) requestAnimationFrame(step); else onDone && onDone();
+  }
+  requestAnimationFrame(step);
+}
+
+/* ---- three.js scene ---- */
+const container = document.getElementById('stage');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth/container.clientHeight, .1, 100);
+const DEFAULT_CAM = {x:3.1, y:2.7, z:5.6, tx:0, ty:1.05, tz:0};
+const PLANT_CAM = {x:2.4, y:2.4, z:4.3, tx:0, ty:1.2, tz:0};
+camera.position.set(DEFAULT_CAM.x, DEFAULT_CAM.y, DEFAULT_CAM.z);
+
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(DEFAULT_CAM.tx, DEFAULT_CAM.ty, DEFAULT_CAM.tz);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.minDistance = 2.2; controls.maxDistance = 10;
+controls.maxPolarAngle = Math.PI*.49;
+controls.autoRotate = true; controls.autoRotateSpeed = 1.1;
+controls.update();
+
+function resize(){
+  const w = container.clientWidth, h = container.clientHeight;
+  renderer.setSize(w,h); camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+resize(); window.addEventListener('resize', resize);
+
+scene.add(new THREE.HemisphereLight(0x9fd3ff, 0x1a2438, .9));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(4,6,3); dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(1024,1024);
+Object.assign(dirLight.shadow.camera, {left:-5, right:5, top:5, bottom:-5});
+scene.add(dirLight);
+const glowGreen = new THREE.PointLight(0x22c55e, 1.3, 7); glowGreen.position.set(-2.5,2.2,1.2); scene.add(glowGreen);
+const glowBlue = new THREE.PointLight(0x3b82f6, .9, 7); glowBlue.position.set(2.2,1.6,-1); scene.add(glowBlue);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(4.2,48).rotateX(-Math.PI/2), new THREE.ShadowMaterial({opacity:.35}));
+ground.receiveShadow = true; scene.add(ground);
+
+const root = new THREE.Group(); scene.add(root);
+const CLICKABLE = [];
+function tag(obj,id){ obj.userData.id = id; CLICKABLE.push(obj); return obj; }
+
+function numberSprite(n){
+  const cv = document.createElement('canvas'); cv.width = 96; cv.height = 96;
+  const ctx = cv.getContext('2d');
+  ctx.beginPath(); ctx.arc(48,48,40,0,Math.PI*2); ctx.fillStyle = '#3b82f6'; ctx.fill();
+  ctx.lineWidth = 5; ctx.strokeStyle = '#fff'; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 42px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(n), 48, 52);
+  const tex = new THREE.CanvasTexture(cv);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false, transparent:true}));
+  sprite.scale.set(.34,.34,1);
+  return sprite;
+}
+function canvasTex(draw,w,h){
+  const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+  draw(cv.getContext('2d'));
+  return new THREE.CanvasTexture(cv);
+}
+
+/* materials */
+const matPot = new THREE.MeshStandardMaterial({color:0xe9e7e0, roughness:.55, metalness:.06, transparent:true});
+const matSoil = new THREE.MeshStandardMaterial({color:0x2c1d12, roughness:1});
+const matBezel = new THREE.MeshStandardMaterial({color:0xd6d6da, roughness:.28, metalness:.6, transparent:true});
+const matDark = new THREE.MeshStandardMaterial({color:0x11182a, roughness:.5, metalness:.2, transparent:true});
+const matGlass = new THREE.MeshPhysicalMaterial({color:0xbfe0f5, roughness:.12, transmission:.7, thickness:.35, transparent:true, opacity:.88});
+const matLiquid = new THREE.MeshStandardMaterial({color:0x3b82f6, roughness:.3, emissive:0x1c3f73, emissiveIntensity:.35});
+const matLens = new THREE.MeshStandardMaterial({color:0x0b1220, roughness:.2, metalness:.4, emissive:0x2563eb, emissiveIntensity:.5});
+const matCable = new THREE.MeshStandardMaterial({color:0x39445c, roughness:.6, emissive:0x5eead4, emissiveIntensity:.15});
+function leafTexture(baseHex, tipHex){
+  return canvasTex(ctx=>{
+    const g = ctx.createLinearGradient(0,0,256,0);
+    g.addColorStop(0, baseHex); g.addColorStop(1, tipHex);
+    ctx.fillStyle = g; ctx.fillRect(0,0,256,128);
+    ctx.strokeStyle = 'rgba(20,55,20,.45)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(4,64); ctx.lineTo(250,64); ctx.stroke();
+    for(let x=28;x<236;x+=32){
+      ctx.beginPath(); ctx.moveTo(x,64); ctx.lineTo(x+16,64-20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,64); ctx.lineTo(x+16,64+20); ctx.stroke();
+    }
+  },256,128);
+}
+function leafShape(len,wid){
+  const s = new THREE.Shape();
+  s.moveTo(0,0);
+  s.bezierCurveTo(len*.18,wid*.55, len*.6,wid*.6, len,0);
+  s.bezierCurveTo(len*.6,-wid*.6, len*.18,-wid*.55, 0,0);
+  return s;
+}
+const leafMats = [
+  new THREE.MeshStandardMaterial({map:leafTexture('#2f6b34','#8fe08f'), roughness:.55, side:THREE.DoubleSide, transparent:true}),
+  new THREE.MeshStandardMaterial({map:leafTexture('#356f3a','#9be89b'), roughness:.55, side:THREE.DoubleSide, transparent:true}),
+  new THREE.MeshStandardMaterial({map:leafTexture('#3d7a41','#a8edab'), roughness:.55, side:THREE.DoubleSide, transparent:true}),
+  new THREE.MeshStandardMaterial({map:leafTexture('#2a5f2f','#7fd382'), roughness:.55, side:THREE.DoubleSide, transparent:true}),
+];
+
+/* pot */
+const pot = tag(new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.3,1.0,40), matPot), 7);
+pot.position.y = .5; pot.castShadow = true; pot.receiveShadow = true; root.add(pot);
+const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5,.045,12,48), new THREE.MeshStandardMaterial({color:0x5eead4, emissive:0x2dd4bf, emissiveIntensity:.6, roughness:.3}));
+rim.rotation.x = Math.PI/2; rim.position.y = 1.0; root.add(rim);
+const soil = tag(new THREE.Mesh(new THREE.CylinderGeometry(1.35,1.35,.15,40), matSoil), 7);
+soil.position.y = 1.0; soil.receiveShadow = true; root.add(soil);
+const potSprite = numberSprite(7); potSprite.position.set(1.55,1.15,1.4); root.add(potSprite); tag(potSprite,7);
+
+/* plant */
+const plant = new THREE.Group(); plant.position.set(0,1.05,0); root.add(plant);
+const stem = tag(new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,1.3,10), new THREE.MeshStandardMaterial({color:0x3f7d3f,roughness:.8,transparent:true})),5);
+stem.position.y = .65; stem.castShadow = true; plant.add(stem);
+const LEAF_N = 9;
+const leafGroups = [];
+for(let i=0;i<LEAF_N;i++){
+  const t = i/(LEAF_N-1);
+  const h = .3 + t*1.05;
+  const ang = i*137.5*Math.PI/180;
+  const len = .8 - t*.28 + (Math.random()*.06-.03);
+  const wid = len*.4;
+  const dip = (1-t)*1.0 + .18;
+  const group = new THREE.Group();
+  group.position.set(0,h,0); group.rotation.y = ang; group.rotation.z = -dip;
+  const leaf = tag(new THREE.Mesh(new THREE.ShapeGeometry(leafShape(len,wid),10), leafMats[i%leafMats.length]),5);
+  leaf.castShadow = true; leaf.receiveShadow = true;
+  group.add(leaf); plant.add(group); leafGroups.push({g:group, base:-dip});
+}
+const plantSprite = numberSprite(5); plantSprite.position.set(0,1.9,0); plant.add(plantSprite); tag(plantSprite,5);
+
+/* device */
+const device = new THREE.Group(); device.position.set(-2.3,0,.2); root.add(device);
+const stand = tag(new THREE.Mesh(new THREE.BoxGeometry(1.15,1.9,.18), matBezel),2);
+stand.position.y = 1.15; stand.castShadow = true; stand.receiveShadow = true; device.add(stand);
+const inner = tag(new THREE.Mesh(new THREE.BoxGeometry(.92,1.55,.05), matDark),2);
+inner.position.set(0,1.15,.1); device.add(inner);
+function drawScreen(ctx, st){
+  ctx.fillStyle='#0c1424'; ctx.fillRect(0,0,256,420);
+  ctx.textAlign='left';
+  ctx.fillStyle='#fff'; ctx.font='bold 20px sans-serif'; ctx.fillText('État global',14,40);
+  ctx.fillStyle='#1c2536'; ctx.fillRect(14,52,150,10);
+  ctx.fillStyle=st.color; ctx.fillRect(14,52,150*st.health,10);
+  ctx.fillStyle=st.labelColor; ctx.font='14px sans-serif'; ctx.fillText(st.label,14,84);
+  const rows=[['N',150*st.n,st.n>.7?'#22c55e':(st.n>.45?'#f5a623':'#ef4444')],['P',110,'#3b82f6'],['K',130,'#f5a623'],['pH',80,'#a855f7']];
+  let y=120; ctx.font='13px sans-serif';
+  rows.forEach(r=>{ ctx.fillStyle='#cfd6e4'; ctx.fillText(r[0],14,y); ctx.fillStyle=r[2]; ctx.fillRect(46,y-10,r[1],8); y+=32; });
+  ctx.fillStyle='#1c2536'; ctx.fillRect(14,300,228,36);
+  ctx.fillStyle='#cfd6e4'; ctx.font='14px sans-serif'; ctx.fillText(st.btn,50,323);
+  if(st.msg){ ctx.fillStyle=st.color; ctx.font='13px sans-serif'; ctx.fillText(st.msg,14,364); }
+}
+const SCREEN_OK = {n:1, health:1, color:'#22c55e', labelColor:'#8fe3a3', label:'Bon', btn:'🧠 IA Analyse', msg:''};
+const screenTex = canvasTex(ctx=>drawScreen(ctx,SCREEN_OK),256,420);
+const screenPlane = tag(new THREE.Mesh(new THREE.PlaneGeometry(.88,1.5), new THREE.MeshBasicMaterial({map:screenTex, transparent:true})),2);
+screenPlane.position.set(0,1.15,.13); device.add(screenPlane);
+const camBody = tag(new THREE.Mesh(new THREE.BoxGeometry(.7,.22,.16), matBezel),1);
+camBody.position.set(0,2.15,.05); camBody.castShadow = true; device.add(camBody);
+const lens = tag(new THREE.Mesh(new THREE.SphereGeometry(.09,16,16), matLens),1);
+lens.position.set(0,2.15,.14); device.add(lens);
+const aiChip = tag(new THREE.Mesh(new THREE.SphereGeometry(.05,12,12), new THREE.MeshStandardMaterial({color:0x8b5cf6, emissive:0x8b5cf6, emissiveIntensity:1, transparent:true})),9);
+aiChip.position.set(.38,2.0,.13); device.add(aiChip);
+const camSprite = numberSprite(1); camSprite.position.set(0,2.42,.05); device.add(camSprite); tag(camSprite,1);
+const screenSprite = numberSprite(2); screenSprite.position.set(0,1.98,.2); device.add(screenSprite); tag(screenSprite,2);
+const aiSprite = numberSprite(9); aiSprite.position.set(.38,2.22,.13); device.add(aiSprite); tag(aiSprite,9);
+
+/* panneau solaire */
+const matSolarFrame = new THREE.MeshStandardMaterial({color:0x2a3346, roughness:.4, metalness:.5, transparent:true});
+const solarTex = canvasTex(ctx=>{
+  const g = ctx.createLinearGradient(0,0,256,160); g.addColorStop(0,'#1e3a8a'); g.addColorStop(1,'#0f1f4d');
+  ctx.fillStyle=g; ctx.fillRect(0,0,256,160);
+  ctx.strokeStyle='rgba(190,215,255,.55)'; ctx.lineWidth=2;
+  for(let i=1;i<6;i++){ ctx.beginPath(); ctx.moveTo(i*256/6,0); ctx.lineTo(i*256/6,160); ctx.stroke(); }
+  for(let j=1;j<4;j++){ ctx.beginPath(); ctx.moveTo(0,j*40); ctx.lineTo(256,j*40); ctx.stroke(); }
+  ctx.strokeStyle='#cfd6e4'; ctx.lineWidth=6; ctx.strokeRect(3,3,250,154);
+},256,160);
+const matSolarCells = new THREE.MeshStandardMaterial({map:solarTex, roughness:.25, metalness:.3, transparent:true});
+const solar = new THREE.Group(); solar.position.set(0,2.8,-.05); solar.rotation.x = .4; device.add(solar);
+const solarFrame = tag(new THREE.Mesh(new THREE.BoxGeometry(1.2,.04,.76), matSolarFrame),10);
+solarFrame.castShadow = true; solar.add(solarFrame);
+const solarCells = tag(new THREE.Mesh(new THREE.PlaneGeometry(1.14,.7).rotateX(-Math.PI/2), matSolarCells),10);
+solarCells.position.y = .025; solar.add(solarCells);
+[-.45,.45].forEach(x=>{
+  const post = tag(new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.62,10), matSolarFrame),10);
+  post.position.set(x,2.4,-.02); device.add(post);
+});
+const solarSprite = numberSprite(10); solarSprite.position.set(0,3.2,-.05); device.add(solarSprite); tag(solarSprite,10);
+
+/* cartouche */
+const cart = new THREE.Group(); cart.position.set(-1.0,0,.9); root.add(cart);
+const tube = tag(new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.9,20), matGlass),3);
+tube.position.y = 1.55; tube.castShadow = true; cart.add(tube);
+const liquid = tag(new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,.4,20), matLiquid),3);
+liquid.position.y = 1.35; cart.add(liquid);
+const cap = tag(new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.15,16), matDark),3);
+cap.position.y = 2.08; cart.add(cap);
+const doseCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0,1.1,0), new THREE.Vector3(.5,.9,-.3), new THREE.Vector3(1.0,1.0,-.9)]);
+const doseTube = tag(new THREE.Mesh(new THREE.TubeGeometry(doseCurve,20,.02,8), matDark),3);
+cart.add(doseTube);
+const cartSprite = numberSprite(3); cartSprite.position.set(0,2.25,0); cart.add(cartSprite); tag(cartSprite,3);
+
+/* soil sensors */
+const sensors = new THREE.Group(); root.add(sensors);
+[[.4,.5],[-.35,-.45]].forEach(p=>{
+  const pin = tag(new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.35,10), matCable),6);
+  pin.position.set(p[0],1.15,p[1]); pin.castShadow = true; sensors.add(pin);
+  const tip = tag(new THREE.Mesh(new THREE.SphereGeometry(.045,10,10), new THREE.MeshStandardMaterial({color:0x3b82f6, emissive:0x1d4ed8, emissiveIntensity:.6})),6);
+  tip.position.set(p[0],1.32,p[1]); sensors.add(tip);
+});
+const sensorSprite = numberSprite(6); sensorSprite.position.set(.02,1.55,.02); sensors.add(sensorSprite); tag(sensorSprite,6);
+
+/* cables */
+const cableCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(-2.3,1.15,.3), new THREE.Vector3(-1.4,.55,.55), new THREE.Vector3(-.2,.95,.6)]);
+const cableMesh = tag(new THREE.Mesh(new THREE.TubeGeometry(cableCurve,24,.025,8), matCable),4);
+cableMesh.castShadow = true; root.add(cableMesh);
+const cableSprite = numberSprite(4); cableSprite.position.set(-1.4,1.05,.55); root.add(cableSprite); tag(cableSprite,4);
+
+/* health card */
+function drawHealth(ctx, label, color){
+  ctx.fillStyle='#141c2c'; ctx.fillRect(0,0,256,140);
+  ctx.strokeStyle='#5eead4'; ctx.lineWidth=4; ctx.strokeRect(2,2,252,136);
+  ctx.fillStyle='#fff'; ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.fillText('Santé globale',128,60);
+  ctx.fillStyle=color; ctx.font='bold 22px sans-serif'; ctx.fillText(label,128,96);
+}
+const healthTex = canvasTex(ctx=>drawHealth(ctx,'Bonne','#22c55e'),256,140);
+const healthCard = tag(new THREE.Mesh(new THREE.PlaneGeometry(1.0,.55), new THREE.MeshBasicMaterial({map:healthTex, transparent:true})),8);
+healthCard.position.set(-3.1,.75,1.1); healthCard.rotation.y = .5; root.add(healthCard);
+const healthSprite = numberSprite(8); healthSprite.position.set(0,.42,0); healthCard.add(healthSprite); tag(healthSprite,8);
+
+/* ---- interaction ---- */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let downX=0, downY=0;
+renderer.domElement.addEventListener('pointerdown', e => { downX=e.clientX; downY=e.clientY; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if(Math.hypot(e.clientX-downX, e.clientY-downY) > 6) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((e.clientX-rect.left)/rect.width)*2-1;
+  pointer.y = -((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(CLICKABLE, false);
+  if(hits.length) focusOn(hits[0].object.userData.id);
+});
+
+function moveCam(target, duration){
+  controls.enabled = false; controls.autoRotate = false; spinToggle.classList.remove('on');
+  const state = {x:camera.position.x, y:camera.position.y, z:camera.position.z, tx:controls.target.x, ty:controls.target.y, tz:controls.target.z};
+  tween(state, target, duration || 700, () => {
+    camera.position.set(state.x,state.y,state.z);
+    controls.target.set(state.tx,state.ty,state.tz);
+    controls.update();
+  }, () => { controls.enabled = true; });
+}
+
+function focusOn(id){
+  id = Number(id);
+  const obj = CLICKABLE.find(o => o.userData.id === id);
+  if(!obj) return;
+  const worldPos = new THREE.Vector3(); obj.getWorldPosition(worldPos);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  const camPos = worldPos.clone().add(dir.multiplyScalar(1.9));
+  moveCam({x:camPos.x,y:camPos.y,z:camPos.z,tx:worldPos.x,ty:worldPos.y,tz:worldPos.z});
+  activate(id);
+  const c = COMPONENTS.find(c => c.id === id);
+  document.getElementById('focusTitle').textContent = c.id + '. ' + c.name;
+  document.getElementById('focusDesc').textContent = c.desc;
+  document.getElementById('focusCard').hidden = false;
+}
+
+function resetView(){
+  moveCam(DEFAULT_CAM);
+  document.getElementById('focusCard').hidden = true;
+  document.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
+}
+document.getElementById('zoomReset').onclick = resetView;
+document.getElementById('focusClose').onclick = resetView;
+document.getElementById('zoomIn').onclick = () => { const d=camera.position.clone().sub(controls.target).multiplyScalar(.82); camera.position.copy(controls.target).add(d); controls.update(); };
+document.getElementById('zoomOut').onclick = () => { const d=camera.position.clone().sub(controls.target).multiplyScalar(1.2); camera.position.copy(controls.target).add(d); controls.update(); };
+renderer.domElement.addEventListener('dblclick', resetView);
+
+const spinToggle = document.getElementById('spinToggle');
+spinToggle.classList.add('on');
+spinToggle.addEventListener('click', () => {
+  controls.autoRotate = !controls.autoRotate;
+  spinToggle.classList.toggle('on', controls.autoRotate);
+});
+controls.addEventListener('start', () => { controls.autoRotate = false; spinToggle.classList.remove('on'); });
+
+/* view tabs */
+const VS = {explode:0, fadeDevice:0, fadePot:0};
+const SIM = {n:1, stress:0, cable:0, msg:'', btn:'🧠 IA Analyse'};
+function applyVS(){
+  device.position.x = -2.3 - VS.explode*1.0;
+  cart.position.x = -1.0 - VS.explode*.3; cart.position.z = .9 + VS.explode*.4;
+  plant.position.y = 1.05 + VS.explode*.5;
+  const dOp = 1 - VS.fadeDevice*.85;
+  [matBezel, matDark, matSolarFrame, matSolarCells].forEach(m => m.opacity = dOp);
+  screenPlane.material.opacity = dOp; camBody.material.opacity = dOp; lens.material.opacity = dOp; aiChip.material.opacity = dOp;
+  const pOp = 1 - VS.fadePot*.65;
+  matPot.opacity = pOp; leafMats.forEach(m => m.opacity = 1 - VS.fadePot*.5);
+  matCable.emissiveIntensity = .15 + VS.fadePot*1.0 + SIM.cable;
+}
+const VIEWS = {
+  general:{explode:0, fadeDevice:0, fadePot:0, cam:DEFAULT_CAM},
+  exploded:{explode:1, fadeDevice:0, fadePot:0, cam:DEFAULT_CAM},
+  internal:{explode:0, fadeDevice:0, fadePot:1, cam:DEFAULT_CAM},
+  plant:{explode:0, fadeDevice:1, fadePot:0, cam:PLANT_CAM},
+};
+const tabs = document.getElementById('tabs');
+tabs.addEventListener('click', e => {
+  const btn = e.target.closest('button'); if(!btn) return;
+  tabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const cfg = VIEWS[btn.dataset.view];
+  tween(VS, {explode:cfg.explode, fadeDevice:cfg.fadeDevice, fadePot:cfg.fadePot}, 700, applyVS);
+  moveCam(cfg.cam, 900);
+});
+
+document.getElementById('fsBtn').addEventListener('click', () => {
+  try{ if(!document.fullscreenElement) document.querySelector('.stage-wrap').requestFullscreen(); else document.exitFullscreen(); }catch(e){}
+});
+
+
+/* ---- simulation : carence en azote -> détection -> diagnostic IA -> dosage -> rétablissement ---- */
+document.getElementById('introBtn').addEventListener('click', () => {
+  const intro = document.getElementById('intro');
+  intro.classList.add('hide');
+  setTimeout(() => { intro.style.display = 'none'; }, 700);
+});
+const simBtn = document.getElementById('simBtn');
+const simBanner = document.getElementById('simBanner');
+const phone = document.getElementById('phone'), notif = document.getElementById('notif'), phoneApp = document.getElementById('phoneApp');
+const lvlBar = document.getElementById('lvlBar'), lvlTxt = document.getElementById('lvlTxt'), refillBtn = document.getElementById('refillBtn');
+const simNext = document.getElementById('simNext');
+function waitNextOr(el, label){
+  return new Promise(r => {
+    const done = () => { simNext.disabled = true; simNext.onclick = null; if(el) el.removeEventListener('click', done); r(); };
+    simNext.textContent = label || 'Suivant ▶';
+    simNext.disabled = false; simNext.onclick = done;
+    if(el) el.addEventListener('click', done);
+  });
+}
+const ease = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function anim(ms, fn){
+  return new Promise(res => {
+    const t0 = performance.now();
+    (function s(now){ const t = Math.min(1,(now-t0)/ms); fn(t); if(t<1) requestAnimationFrame(s); else res(); })(t0);
+  });
+}
+
+const scanRing = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.0,1.0,.03,48,1,true),
+  new THREE.MeshBasicMaterial({color:0x5eead4, transparent:true, opacity:.55, side:THREE.DoubleSide, depthWrite:false})
+);
+scanRing.visible = false; root.add(scanRing);
+
+const ripple = new THREE.Mesh(
+  new THREE.RingGeometry(.15,.2,40).rotateX(-Math.PI/2),
+  new THREE.MeshBasicMaterial({color:0x3b82f6, transparent:true, opacity:.6, side:THREE.DoubleSide, depthWrite:false})
+);
+ripple.position.set(0,1.09,0); ripple.visible = false; root.add(ripple);
+
+const drops = [0,1,2].map(() => {
+  const d = new THREE.Mesh(new THREE.SphereGeometry(.05,12,12), new THREE.MeshStandardMaterial({color:0x3b82f6, emissive:0x3b82f6, emissiveIntensity:1.2}));
+  d.visible = false; cart.add(d); return d;
+});
+const sensorTips = [];
+sensors.traverse(o => { if(o.isMesh && o.geometry.type==='SphereGeometry') sensorTips.push(o); });
+
+function setStress(v){
+  SIM.stress = v;
+  leafMats.forEach(m => { m.color.setRGB(1+v*1.4, 1+v*.8, 1-v*.8); m.emissive.setRGB(.12*v,.09*v,0); });
+  leafGroups.forEach(l => { l.g.rotation.z = l.base - v*.4; });
+}
+function refreshUI(){
+  const n = SIM.n;
+  const level = n>.8 ? {label:'Bon', card:'Bonne', color:'#22c55e', lc:'#8fe3a3'}
+              : n>.5 ? {label:'À surveiller', card:'À surveiller', color:'#f5a623', lc:'#f5c36b'}
+              :        {label:'Carence en N', card:'Carence N', color:'#ef4444', lc:'#f28b8b'};
+  drawScreen(screenTex.image.getContext('2d'), {n, health:.2+.8*n, color:level.color, labelColor:level.lc, label:level.label, btn:SIM.btn, msg:SIM.msg});
+  screenTex.needsUpdate = true;
+  drawHealth(healthTex.image.getContext('2d'), level.card, level.color);
+  healthTex.needsUpdate = true;
+}
+function resetSim(){
+  SIM.n = 1; SIM.msg = ''; SIM.btn = '🧠 IA Analyse'; SIM.cable = 0;
+  setStress(0); refreshUI(); applyVS();
+  liquid.scale.y = 1; liquid.position.y = 1.35;
+  aiChip.material.emissiveIntensity = 1; aiChip.scale.setScalar(1);
+  matLens.emissiveIntensity = .5;
+  sensorTips.forEach(t => t.material.emissiveIntensity = .6);
+  scanRing.visible = false; ripple.visible = false; drops.forEach(d => d.visible = false);
+  matGlass.emissive.setRGB(0,0,0);
+  phone.hidden = true; phone.classList.remove('buzz'); notif.classList.remove('in'); notif.hidden = false; phoneApp.hidden = true;
+  lvlBar.style.width = '0%'; lvlTxt.textContent = '0 %'; refillBtn.disabled = false; refillBtn.textContent = "J'ai rempli la cartouche";
+}
+
+let simRunning = false;
+async function runSim(){
+  if(simRunning) return;
+  simRunning = true; simBtn.disabled = true; simBtn.textContent = '⏳ Simulation en cours…';
+  resetSim();
+  document.getElementById('focusCard').hidden = true;
+  document.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
+  tabs.querySelector('[data-view="general"]').click();
+  simBanner.hidden = false; simNext.textContent = 'Suivant ▶'; simNext.disabled = true;
+  const simStep = document.getElementById('simStep'), simText = document.getElementById('simText'), simBar = document.getElementById('simBar');
+  const step = (i, txt) => { simStep.textContent = 'Étape ' + i + ' / 6'; simText.textContent = txt; simBar.style.width = (i/6*100) + '%'; };
+  simStep.textContent = 'Préparation'; simText.textContent = 'Retour à la vue générale…'; simBar.style.width = '0%';
+  await sleep(1000);
+
+  step(1, "Les capteurs du sol mesurent une baisse progressive de l'azote (N).");
+  SIM.msg = 'Baisse de N détectée';
+  await anim(2800, t => {
+    const e = ease(t); SIM.n = 1 - .65*e; setStress(.6*e);
+    const k = .5+.5*Math.sin(t*Math.PI*8);
+    sensorTips.forEach(m => m.material.emissiveIntensity = .6 + 3*k);
+    refreshUI();
+  });
+  sensorTips.forEach(m => m.material.emissiveIntensity = .6);
+
+  await waitNextOr();
+  step(2, "La caméra balaie le feuillage et repère un jaunissement et un léger affaissement.");
+  SIM.msg = 'Scan des feuilles…'; scanRing.visible = true; refreshUI();
+  await anim(3200, t => {
+    const p = t*2, f = p<1 ? p : 2-p;
+    scanRing.position.y = 1.1 + 1.35*f;
+    scanRing.material.opacity = .35 + .3*Math.sin(t*Math.PI*12)*Math.sin(t*Math.PI*12);
+    matLens.emissiveIntensity = .5 + 2.5*Math.abs(Math.sin(t*Math.PI*10));
+    setStress(.6 + .4*ease(t));
+  });
+  scanRing.visible = false; matLens.emissiveIntensity = .5;
+
+  await waitNextOr();
+  step(3, "Le module d'IA croise capteurs et images : diagnostic de carence en azote.");
+  SIM.msg = 'Diagnostic : carence en N'; SIM.btn = '🧠 Analyse en cours…'; refreshUI();
+  await anim(2800, t => {
+    const k = .5+.5*Math.sin(t*Math.PI*10);
+    aiChip.material.emissiveIntensity = 1 + 3*k; aiChip.scale.setScalar(1 + .7*k);
+    SIM.cable = 1.3*k; applyVS();
+  });
+  aiChip.material.emissiveIntensity = 1; aiChip.scale.setScalar(1); SIM.cable = 0; applyVS();
+
+  await waitNextOr();
+  step(4, "La cartouche dose automatiquement la solution nutritive dans le substrat, jusqu'à se vider.");
+  SIM.msg = 'Dosage en cours…'; SIM.btn = '🧠 Correction en cours'; refreshUI();
+  await anim(3800, t => {
+    liquid.scale.y = 1 - .97*t; liquid.position.y = 1.15 + .2*liquid.scale.y;
+    drops.forEach((d,i) => {
+      const u = (t - i*.22)/.4;
+      d.visible = u>0 && u<1;
+      if(d.visible) d.position.copy(doseCurve.getPoint(u));
+    });
+    const r = (t - .35)/.65; ripple.visible = t>.35;
+    if(ripple.visible){ const q = (r*3)%1; ripple.scale.setScalar(1 + q*6); ripple.material.opacity = .6*(1-q); }
+    SIM.n = .35 + .25*ease(t); setStress(1 - .15*ease(t)); refreshUI();
+  });
+  drops.forEach(d => d.visible = false); ripple.visible = false;
+
+  await waitNextOr();
+  step(5, "Les nutriments sont absorbés : la plante se redresse et reverdit.");
+  SIM.msg = 'Récupération…'; refreshUI();
+  const n0 = SIM.n, s0 = SIM.stress;
+  await anim(3400, t => {
+    const e = ease(t); SIM.n = n0 + (1-n0)*e; setStress(s0*(1-e)); refreshUI();
+  });
+  SIM.msg = 'Plante en bonne santé ✔'; SIM.btn = '🧠 IA Analyse'; refreshUI();
+
+  await waitNextOr();
+  step(6, "La cartouche est vide : l'appareil envoie une notification à l'application mobile (touchez-la ou « Ouvrir l'app »).");
+  SIM.msg = 'Cartouche vide'; SIM.btn = '📱 Notification envoyée'; refreshUI();
+  phone.hidden = false; await sleep(350);
+  notif.classList.add('in'); phone.classList.add('buzz');
+  let alertOn = true;
+  (function blink(){ if(!alertOn) return; const k = .5+.5*Math.sin(performance.now()/180); matGlass.emissive.setRGB(.9*k,.05*k,.05*k); requestAnimationFrame(blink); })();
+  await waitNextOr(notif, "Ouvrir l'app ▶");
+  notif.hidden = true; phoneApp.hidden = false; phone.classList.remove('buzz');
+  simText.textContent = "Dans l'application, le niveau de la cartouche est à 0 %. L'utilisateur la remplit.";
+  await waitNextOr(refillBtn, 'Remplir la cartouche ▶');
+  alertOn = false; matGlass.emissive.setRGB(0,0,0);
+  refillBtn.disabled = true; refillBtn.textContent = 'Remplissage…';
+  simText.textContent = "La cartouche est rechargée : le traitement automatique peut reprendre.";
+  await anim(2600, t => {
+    const e = ease(t);
+    liquid.scale.y = .03 + .97*e; liquid.position.y = 1.15 + .2*liquid.scale.y;
+    lvlBar.style.width = (e*100) + '%'; lvlTxt.textContent = Math.round(e*100) + ' %';
+  });
+  refillBtn.textContent = '✔ Cartouche pleine';
+  SIM.msg = 'Cartouche rechargée ✔'; SIM.btn = '🧠 IA Analyse'; refreshUI();
+  await waitNextOr(null, 'Terminer ▶'); phone.hidden = true;
+  simText.textContent = "Simulation terminée : carence détectée, corrigée, puis cartouche vide signalée sur l'app et rechargée.";
+  simStep.textContent = 'Terminé'; simBar.style.width = '100%'; simNext.textContent = 'Terminé ✔'; simNext.disabled = true;
+  simBtn.disabled = false; simBtn.textContent = '↻ Relancer la simulation'; simRunning = false;
+}
+simBtn.addEventListener('click', runSim);
+
+(function loop(){ controls.update(); renderer.render(scene,camera); requestAnimationFrame(loop); })();
+activate(1);
+</script>
+</body>
+</html>
